@@ -1,0 +1,112 @@
+#+TITLE: Plan
+
+Chip 8 implementation plan
+
+* Chip8 Specification
+** RAM
+- Total 4KB (4096 B) of accessible RAM (0x000 - 0xFFF)
+- First 512 bytes (0x000 - 0x1FF) are location of original interpeter; programs didn't use this, but nowadays it's usually used for font data.
+- Final 352 bytes are reserved as well.
+- Most programs begin at 0x200, and go up to 0x69F
+
+** Registers
+- 16 8-bit general purpose registers, notation is Vx, where x is the register index; x = [0 - F].
+- VF register often used as flag after certain instructions.
+- 16-bit register I, usually used for memory access.
+- Final two registers are the PC (16-bit) and SP (8-bit). On the chip8, the stack is a special memory array of 16 16-bit values, used to store return addresses for subroutines. (the stack is somewhere in the range 0xEA0-0xEFF).
+- Two special purpose timer registers. When nonzero, they are decremented at rate of 60Hz. Since the Chip8 clocks at 18.2Hz, each clock decrements the timers by 3.
+
+** Input
+- Chip8 has a hex keyboard with 16 keys.
+- Keys 8, 4, 6, and 2 are usually used for directional input (the digits are organized like an old nokia phone, and the letters in in the rightmost column)
+
+** Display
+- Display field is 3F x 1F pixels, with pixel values either 0x0 or 0x1.
+- Sprites are 8x[1-16] pixels.
+- Sprites are rendered by XOR operations with the current pixel values on-screen.
+- Sprites drawn to positions greater than display range are wrapped round. Partially off-screen sprites are clipped
+- Memory comes preloaded for sprites representing hex digits 0-F.
+
+** Instruction Set
+All instructions are 2-bytes long and big-endian. First byte of each instruction should be at an even address (alignment?).
+
+Symbol meanings:
+- NNN: address
+- NN: 8-bit const
+- X/Y: 4-bit register
+- PC: Program Counter
+- I: 16-bit address register
+- VN: argument, where N = [0-F]
+
+*** Opcodes (grouped and ordered by byte prefix)
+- 0NNN: Call machine code routine at NNN (rarely used, wtf does it do?)
+- 00EE: Return from subroutine
+
+- 1NNN: Jump to NNN
+
+- 2NNN: Call subroutine at NNN
+
+- 3XNN: Skip next instruction if VX == NN
+
+- 4XNN: Skip next instruction if VX /= NN
+
+- 5XY0: Skip next instruction if VX == VY
+
+- 6XNN: VX = NN
+
+- 7XNN: VX += NN
+
+- 8XY0: VX = VY
+- 8XY1: VX = VX OR VY
+- 8XY2: VX = VX AND VY
+- 8XY3: VX = VX XOR VY (Undocumented)
+- 8XY4: VX += VY
+- 8XY5: VX -= VY
+- 8XY6: VX >>= 1 (Undocumented)
+- 8XY7: VX = VY - VX (Undocumented)
+- 8XYE: VX <<= 1 (Undocumented)
+
+- 9XY0: Skip next instruction if VX /= VY
+
+- ANNN: I = NNN
+
+- BNNN: Jump to (NNN+V0)
+
+- CXNN: Set VX to: NN AND rand[0-255]
+
+- DXYN: Draw sprite with height N (and width 8) at (VX, VY)
+
+- EX9E: Skip next instruction if key VX is pressed
+- EXA1: Skip next instruction if key VX is not pressed
+
+- FX07: VX = Delay Timer
+- FX0A: Wait for key then store in VX
+- FX15: Set Delay Timer to VX
+- FX18: Set Sound Timer to VX
+- FX1E: I += VX
+- FX29: I = CHAR[VX] (CHAR retreives the preloaded characters)
+- FX33: I = BCD representation of VX
+  * Of three digits, first is stored at I+0, second at I+1, third at I+2
+- FX55: Store V0-VX starting at I (do not modify I)
+- FX65: Fill V0-Vx with values starting at I (again, do not modify I)
+
+* Implementation Plan
+We're going to use LISP (Scheme (Guile)) for this project. It's going to be awesome!
+We're going to write it in _Racket_.
+
+** Emulator Loop
+It seems that the emulator progresses as follows:
+1. Read byte at PC (this increments PC)
+2. Interpet instruction from most-significant byte
+3. Either:
+  a. Collect arguments from rest of byte (or)
+  b. Further interpret instruction from least significant byte(s), and use rest of bytes as args
+4. Execute instruction, modifying memory, and registers
+5. Repeat from (1)
+
+Memory will be a 4096-element array of bytes.
+
+* Helpful Documentation
+- https://en.wikipedia.org/wiki/CHIP-8
+- http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+- https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Technical-Reference
