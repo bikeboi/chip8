@@ -91,8 +91,7 @@ Symbol meanings:
 - FX65: Fill V0-Vx with values starting at I (again, do not modify I)
 
 * Implementation Plan
-We're going to use LISP (Scheme (Guile)) for this project. It's going to be awesome!
-We're going to write it in _Racket_.
+Going to write it in _Racket_.
 
 ** Emulator Loop
 It seems that the emulator progresses as follows:
